@@ -1,7 +1,6 @@
 package structs
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -35,7 +34,6 @@ func (loadBalancer *LoadBalancer) GetAliveBackends() []Server {
 }
 
 func (loadBalancer *LoadBalancer) getBackendToServe() Server {
-	fmt.Println("here")
 	return loadBalancer.balancer.GetServer(loadBalancer.GetAliveBackends())
 }
 
@@ -43,8 +41,4 @@ func (loadBalancer *LoadBalancer) Balance() {
 	for {
 		loadBalancer.getBackendToServe()
 	}
-}
-
-func (loadbalancer *LoadBalancer) GetLoad() int {
-	return len(loadbalancer.Servers)
 }

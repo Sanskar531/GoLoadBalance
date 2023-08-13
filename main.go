@@ -29,16 +29,20 @@ func main() {
 		return
 	}
 
-	balancer := balancingalgorithms.InitRoundRobin()
-
-	loadbalancer := structs.InitLoadBalancer(
-		[]structs.Server{
+	servers := []structs.Server{
 			structs.InitServer(
 				serverUrl,
 			),
-		},
+	};
+
+	balancer := balancingalgorithms.InitRoundRobin(len(servers))
+
+
+	loadbalancer := structs.InitLoadBalancer(
+		servers,
 		balancer,
 	)
+
 	go loadbalancer.Balance()
 	fmt.Scanln()
 }

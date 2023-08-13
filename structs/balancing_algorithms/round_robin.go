@@ -1,20 +1,29 @@
 package balancingalgorithms
 
 import (
-	"fmt"
+	"container/ring"
 	"github.com/sanskar531/goloadbalance/structs"
 )
 
 type RoundRobin struct {
-	currentIndex int
+	ringBuffer *ring.Ring
 }
 
-func InitRoundRobin () structs.Balancer{
-	roundRobin := new(RoundRobin);
-	return roundRobin;
+func InitRoundRobin(serverPoolSize int) structs.Balancer {
+	ringBuffer := ring.New(serverPoolSize)
+
+	for i := 0; i < serverPoolSize; i++ {
+		ringBuffer.Value = i
+		ringBuffer = ringBuffer.Next()
+	}
+
+	return &RoundRobin{
+		ringBuffer: ringBuffer,
+	}
 }
 
 func (balancer *RoundRobin) GetServer(servers []structs.Server) structs.Server {
-	fmt.Println("HEREE!")
-	return servers[0]
+	currentIndex := balancer.ringBuffer.Value
+	balancer.ringBuffer = balancer.ringBuffer.Next()
+	return servers[currentIndex.(int)]
 }

@@ -7,14 +7,14 @@ import (
 )
 
 type Server struct {
-	Url      *url.URL
-	Alive    bool
+	Url   *url.URL
+	Alive bool
 }
 
 func InitServer(url *url.URL) Server {
 	server := Server{
-		Url:      url,
-		Alive:    false,
+		Url:   url,
+		Alive: true,
 	}
 
 	// Initialize health checks on load
