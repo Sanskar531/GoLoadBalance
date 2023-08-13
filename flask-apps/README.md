@@ -1,1 +1,1 @@
-# Dummy Flask app to ping it it's still alive
+# Dummy Flask app to ping if it's still alive
