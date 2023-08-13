@@ -7,26 +7,26 @@ import (
 )
 
 type Server struct {
-	Url *url.URL
-	Alive bool
+	Url      *url.URL
+	Alive    bool
 }
 
 func InitServer(url *url.URL) Server {
-	server:= Server {
-		Url: url,
-		Alive: false,
+	server := Server{
+		Url:      url,
+		Alive:    false,
 	}
 
 	// Initialize health checks on load
-	go server.healthCheck()
+	go server.healthCheck(time.Second * 5)
 
 	return server
 }
 
-func (server *Server) healthCheck() {
+func (server *Server) healthCheck(duration time.Duration) {
 	for {
 		server.Alive = true
-		time.Sleep(time.Second)
+		time.Sleep(duration)
 		fmt.Println(fmt.Sprintf("Server at %s still alive", server.Url))
 	}
 }

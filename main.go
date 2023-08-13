@@ -3,15 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/url"
 	"github.com/sanskar531/goloadbalance/structs"
+	"github.com/sanskar531/goloadbalance/structs/balancing_algorithms"
+	"net/url"
 )
-
 
 var help = flag.Bool("help", false, "Show help")
 
 func parseCommandLineArgs() {
-	flag.Parse();
+	flag.Parse()
 
 	if *help {
 		fmt.Print(`
@@ -22,21 +22,23 @@ func parseCommandLineArgs() {
 }
 
 func main() {
-	parseCommandLineArgs();
+	parseCommandLineArgs()
 
 	serverUrl, err := url.Parse("www.google.com")
 	if err != nil {
 		return
 	}
-	loadbalancer := structs.LoadBalancer{
-		Servers: []structs.Server{
+
+	balancer := balancingalgorithms.InitRoundRobin()
+
+	loadbalancer := structs.InitLoadBalancer(
+		[]structs.Server{
 			structs.InitServer(
 				serverUrl,
 			),
 		},
-	}
-
-	fmt.Println(loadbalancer.GetLoad())
-	fmt.Println(loadbalancer.GetAliveBackends())
-	fmt.Scanln();
+		balancer,
+	)
+	go loadbalancer.Balance()
+	fmt.Scanln()
 }
