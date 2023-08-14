@@ -40,8 +40,8 @@ func (loadBalancer *LoadBalancer) getBackendToServe() Server {
 }
 
 func (loadBalancer *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	server := loadBalancer.getBackendToServe();
-	go server.HandleRequest(w, r);
+	server := loadBalancer.getBackendToServe()
+	go server.HandleRequest(w, r)
 }
 
 func (loadBalancer *LoadBalancer) Balance() {

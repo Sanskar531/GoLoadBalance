@@ -5,11 +5,9 @@ import (
 	"log"
 	"net/url"
 	"strings"
-
 )
 
 func parseServers(servers *string) []*url.URL {
-
 	if *servers == "" {
 		log.Fatal("Please enter at least one server.")
 	}
