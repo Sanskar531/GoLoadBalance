@@ -8,9 +8,9 @@ import (
 	"net/url"
 )
 
-var help = flag.Bool("help", false, "Show help")
 
 func parseCommandLineArgs() {
+	help := flag.Bool("help", false, "Show help")
 	flag.Parse()
 
 	if *help {
@@ -24,7 +24,7 @@ func parseCommandLineArgs() {
 func main() {
 	parseCommandLineArgs()
 
-	serverUrl, err := url.Parse("www.google.com")
+	serverUrl, err := url.Parse("http://localhost:5000")
 	if err != nil {
 		return
 	}
@@ -36,7 +36,6 @@ func main() {
 	};
 
 	balancer := balancingalgorithms.InitRoundRobin(len(servers))
-
 
 	loadbalancer := structs.InitLoadBalancer(
 		servers,

@@ -1,6 +1,8 @@
 package structs
 
 import (
+	"log"
+	"net/http"
 	"sync"
 )
 
@@ -37,8 +39,16 @@ func (loadBalancer *LoadBalancer) getBackendToServe() Server {
 	return loadBalancer.balancer.GetServer(loadBalancer.GetAliveBackends())
 }
 
+func (loadBalancer *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	server := loadBalancer.getBackendToServe();
+	go server.HandleRequest(w, r);
+}
+
 func (loadBalancer *LoadBalancer) Balance() {
-	for {
-		loadBalancer.getBackendToServe()
-	}
+	http.Handle(
+		"/",
+		loadBalancer,
+	)
+
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
