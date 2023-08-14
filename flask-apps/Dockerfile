@@ -1,9 +1,8 @@
 FROM python:slim-bullseye
 
-ENV FLASK_RUN_HOST=0.0.0.0
-
-RUN pip install Flask
+RUN apt-get update && apt-get -y install build-essential
+RUN pip install Flask uwsgi
 WORKDIR /code/
 COPY ./server.py .
 
-CMD flask --app server run
+CMD uwsgi --http :5000 --wsgi-file server.py --callable app -b 21573

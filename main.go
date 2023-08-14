@@ -24,7 +24,7 @@ func parseCommandLineArgs() {
 func main() {
 	parseCommandLineArgs()
 
-	serverUrl, err := url.Parse("http://localhost:5000")
+	serverUrl, err := url.Parse("http://localhost:8000")
 	if err != nil {
 		return
 	}
