@@ -19,7 +19,7 @@ func main() {
 
 	loadbalancer := structs.InitLoadBalancer(
 		servers,
-		balancer,
+		&balancer,
 	)
 
 	loadbalancer.Balance()
