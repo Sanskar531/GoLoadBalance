@@ -10,7 +10,7 @@ The main goal of this load balancer is to first be initialized and be open to re
 - [x] Can pass servers urls/(IPS+port) via cli.
 - [x] Can pass balancing algorithms via cli.
 - [x] Health checks to ping server whether it's still alive or not.
-- [x] Actual loading balancing using `round_robin` using `circular buffers`. 
+- [x] Actual loading balancing using `round_robin` and `circular buffers`. 
 
 ## Things left to implement:
 - [ ] Caching
