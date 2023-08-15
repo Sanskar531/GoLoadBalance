@@ -2,7 +2,6 @@ package structs
 
 import (
 	"crypto/tls"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,7 +13,7 @@ type Server struct {
 	Alive bool
 }
 
-func InitServer(url *url.URL) Server {
+func InitServer(url *url.URL) *Server {
 	server := Server{
 		Url:   url,
 		Alive: true,
@@ -23,12 +22,16 @@ func InitServer(url *url.URL) Server {
 	// Initialize health checks on load
 	go server.healthCheck(time.Second * 5)
 
-	return server
+	return &server
 }
 
 func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Handling Request from ...")
-	return
+	log.Printf("Forwarding Request to path %s", r.URL.Path);
+	w.Header().Set("Content-Type", "text/html")
+	_, err := w.Write([]byte("<h1>Hello!</h1>"))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func pingServer(url string) bool {
@@ -44,11 +47,10 @@ func pingServer(url string) bool {
 	_, err := client.Get(url)
 
 	if err != nil {
-		fmt.Println("Server is not alive at", url)
-		log.Fatal(err)
+		// Log directly prints to std err
+		log.Printf("Server is not alive at %s", url)
 		return false
 	} else {
-		fmt.Println("Server is alive at", url)
 		return true
 	}
 }

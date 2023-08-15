@@ -1,53 +1,76 @@
 package structs
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
-	"sync"
 )
 
 type LoadBalancer struct {
-	Servers  []Server
-	mu       sync.Mutex
+	Servers  []*Server
 	balancer Balancer
 }
 
-func InitLoadBalancer(servers []Server, balancer Balancer) LoadBalancer {
-	return LoadBalancer{
+func InitLoadBalancer(servers []*Server, balancer Balancer) *LoadBalancer {
+	return &LoadBalancer{
 		Servers:  servers,
 		balancer: balancer,
 	}
 }
 
-func (loadBalancer *LoadBalancer) GetAliveBackends() []Server {
-	var aliveBackends []Server
+func (loadBalancer *LoadBalancer) GetAliveBackends() []*Server {
+	var aliveBackends []*Server
 
-	// A lock here because other threads might be pinging
-	// and changing status.
-	loadBalancer.mu.Lock()
+	// No need for a lock here because a single thread 
+	// will be updating whether the server is alive or not
+	// as the healthcheck is a go routine
 	for _, server := range loadBalancer.Servers {
 		if server.Alive {
 			aliveBackends = append(aliveBackends, server)
 		}
 	}
-	loadBalancer.mu.Unlock()
 
 	return aliveBackends
 }
 
-func (loadBalancer *LoadBalancer) getBackendToServe() Server {
+func (loadBalancer *LoadBalancer) getBackendToServe() *Server {
 	return loadBalancer.balancer.GetServer(loadBalancer.GetAliveBackends())
 }
 
+// This function is called as a go routine by the http module
+// when serving a request
 func (loadBalancer *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	server := loadBalancer.getBackendToServe()
-	go server.HandleRequest(w, r)
+	// Handle request on a different thread
+	server.HandleRequest(w, r)
+}
+
+func (loadBalancer *LoadBalancer) GetServersStatus() map[string]bool {
+	serverStatuses := make(map [string]bool)
+	for _, server := range loadBalancer.Servers {
+		serverStatuses[server.Url.Host] = server.Alive;
+	}
+	return serverStatuses
 }
 
 func (loadBalancer *LoadBalancer) Balance() {
+	// A catch all which is needed for the load balancer to redirect
 	http.Handle(
 		"/",
 		loadBalancer,
+	)
+
+	// Utility Handler to check which hosts are alive
+	http.HandleFunc(
+		"/goloadbalance",
+		func (w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json");
+			encodedJson, err := json.Marshal(loadBalancer.GetServersStatus());
+			if err != nil {
+				log.Println(err)
+			}
+			w.Write(encodedJson);
+		},
 	)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))

@@ -5,7 +5,7 @@ import (
 )
 
 type Balancer interface {
-	GetServer(servers []Server) Server
+	GetServer(servers []*Server) *Server
 }
 
 type RoundRobin struct {
@@ -30,7 +30,7 @@ func InitRoundRobin(serverPoolSize int) Balancer {
 	}
 }
 
-func (balancer *RoundRobin) GetServer(servers []Server) Server {
+func (balancer *RoundRobin) GetServer(servers []*Server) *Server {
 	// Round robin works by distributing the load equally to incoming requests
 	// hence here we just get the value of the current value in the index of the
 	// ring buffer select the server we want to supply the load to and then return
