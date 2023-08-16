@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+type Config struct {
+	ServerUrls []*url.URL
+	Algorithm  string
+}
+
 func parseServers(servers *string) []*url.URL {
 	if *servers == "" {
 		log.Fatal("Please enter at least one server.")
@@ -36,10 +41,19 @@ func parseBalancingAlgorithm(algorithm *string) string {
 	return "round_robin"
 }
 
-func parseCommandLineArgs() ([]*url.URL, string) {
+func parseCommandLineArgs() *Config {
 	servers := flag.String("servers", "", "Show servers")
 	algorithm := flag.String("algorithm", "", "Show Algorithms")
+	configFilePath := flag.String("config", "", "Show Config")
 
 	flag.Parse()
-	return parseServers(servers), parseBalancingAlgorithm(algorithm)
+
+	if (*configFilePath) != "" {
+		return parseYAML(*configFilePath)
+	}
+
+	return &Config{
+		ServerUrls: parseServers(servers),
+		Algorithm:  parseBalancingAlgorithm(algorithm),
+	}
 }

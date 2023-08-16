@@ -18,7 +18,7 @@ func InitLoadBalancer(servers []*Server, balancer *Balancer) *LoadBalancer {
 	}
 }
 
-func (loadBalancer *LoadBalancer) GetAliveBackends() []*Server {
+func (loadBalancer *LoadBalancer) GetAliveServers() []*Server {
 	var aliveServers []*Server
 
 	// No need for a lock here because a single thread
@@ -33,14 +33,14 @@ func (loadBalancer *LoadBalancer) GetAliveBackends() []*Server {
 	return aliveServers
 }
 
-func (loadBalancer *LoadBalancer) getBackendToServe() *Server {
-	return (*loadBalancer.balancer).GetServer(loadBalancer.GetAliveBackends())
+func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
+	return (*loadBalancer.balancer).GetServer(loadBalancer.GetAliveServers())
 }
 
 // This function is called as a go routine by the http module
 // when serving a request
 func (loadBalancer *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	server := loadBalancer.getBackendToServe()
+	server := loadBalancer.getServerToHandleRequest()
 
 	// Handle request on a different thread
 	server.HandleRequest(w, r)

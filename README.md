@@ -11,9 +11,10 @@ The main goal of this load balancer is to first be initialized and be open to re
 - [x] Can pass balancing algorithms via cli.
 - [x] Health checks to ping server whether it's still alive or not.
 - [x] Actual loading balancing using `round_robin` and `circular buffers`. 
+- [x] Support passing `.yaml` config files
 
 ## Things left to implement:
 - [ ] Caching
 - [ ] TLS support
 - [ ] Permanent redirects/rewrites like nginx
-- [ ] Support passing `.toml` config files
+- [ ] Support multiple load balancing algorithm

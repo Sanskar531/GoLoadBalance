@@ -5,11 +5,11 @@ import (
 )
 
 func main() {
-	parsedUrls, _ := parseCommandLineArgs()
+	config := parseCommandLineArgs()
 
 	var servers []*structs.Server
 
-	for _, parsedUrl := range parsedUrls {
+	for _, parsedUrl := range config.ServerUrls {
 		servers = append(servers, structs.InitServer(
 			parsedUrl,
 		))
