@@ -42,9 +42,9 @@ func parseBalancingAlgorithm(algorithm *string) string {
 }
 
 func parseCommandLineArgs() *Config {
-	servers := flag.String("servers", "", "Show servers")
-	algorithm := flag.String("algorithm", "", "Show Algorithms")
-	configFilePath := flag.String("config", "", "Show Config")
+	servers := flag.String("servers", "", "Server urls. Usage: --servers=http://localhost:3000")
+	algorithm := flag.String("algorithm", "", "Load Balancing Algorithms: round_robin. Usage: --algorithm=round_robin")
+	configFilePath := flag.String("config", "", "Config file for the load balancer. Usage --config=./example.yaml")
 
 	flag.Parse()
 
