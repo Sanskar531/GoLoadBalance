@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type Cache struct {
@@ -20,6 +21,7 @@ func InitCache() *Cache {
 		hasher: sha256.New(),
 		values: &sync.Map{},
 	}
+
 	return &cache
 }
 
@@ -55,13 +57,16 @@ func (cache *Cache) check(request *http.Request) *map[string]any {
 	return nil
 }
 
-func (cache *Cache) save(request *http.Request, body *string, response *http.Response) {
+func (cache *Cache) save(request *http.Request, body *string, response *http.Response, cacheTimeoutInSeconds int) {
 	responseAndBody := make(map[string]any)
 	responseAndBody["body"] = body
 	responseAndBody["response"] = response
-	cache.values.Store(cache.hash(request), &responseAndBody)
+	hashedKey := cache.hash(request)
+	cache.values.Store(hashedKey, &responseAndBody)
+	go cache.keepHashedKeyAliveFor(hashedKey, time.Second*time.Duration(cacheTimeoutInSeconds))
 }
 
-func (cache *Cache) removeInvalidEntires() {
-
+func (cache *Cache) keepHashedKeyAliveFor(hashKey string, duration time.Duration) {
+	time.Sleep(duration)
+	cache.values.Delete(hashKey)
 }

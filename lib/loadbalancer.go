@@ -8,17 +8,22 @@ import (
 )
 
 type LoadBalancer struct {
-	Servers  []*Server
-	balancer *Balancer
-	cache    *Cache
+	Servers               []*Server
+	balancer              *Balancer
+	cache                 *Cache
+	cacheTimeoutInSeconds int
 }
 
-func InitLoadBalancer(servers []*Server, balancer *Balancer) *LoadBalancer {
-	return &LoadBalancer{
+func InitLoadBalancer(servers []*Server, balancer *Balancer, isCachingEnabled bool, cachingTimoutInSeconds int) *LoadBalancer {
+	loadbalancer := &LoadBalancer{
 		Servers:  servers,
 		balancer: balancer,
-		cache:    InitCache(),
 	}
+	if isCachingEnabled {
+		loadbalancer.cache = InitCache()
+		loadbalancer.cacheTimeoutInSeconds = cachingTimoutInSeconds
+	}
+	return loadbalancer
 }
 
 func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
@@ -28,28 +33,31 @@ func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
 // This function is called as a go routine by the http module
 // when serving a request
 func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request) {
-	cachedMap := loadBalancer.cache.check(request)
-	if cachedMap != nil {
-		cachedResponse := (*cachedMap)["response"].(*http.Response)
-		cachedBody := (*cachedMap)["body"].(*string)
+	if loadBalancer.cache != nil {
+		cachedMap := loadBalancer.cache.check(request)
+		if cachedMap != nil {
+			cachedResponse := (*cachedMap)["response"].(*http.Response)
+			cachedBody := (*cachedMap)["body"].(*string)
 
-		if cachedResponse != nil {
-			log.Printf("Cache Hit: Found for route %s", request.URL.Path)
+			if cachedResponse != nil {
+				log.Printf("Cache Hit: Found for route %s", request.URL.Path)
 
-			// Reset the Headers properly before relaying the response back
-			responseWriter.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
-			responseWriter.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
-			io.WriteString(responseWriter, *cachedBody)
-			cachedResponse.Body.Close()
-			return
+				// Reset the Headers properly before relaying the response back
+				responseWriter.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
+				responseWriter.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
+				io.WriteString(responseWriter, *cachedBody)
+				cachedResponse.Body.Close()
+				return
+			}
 		}
 	}
 
 	server := loadBalancer.getServerToHandleRequest()
+	res, body, err := server.HandleRequest(responseWriter, request)
 
-	// Handle caching on a different thread so that we can return the response
-	if res, body, err := server.HandleRequest(responseWriter, request); err == nil {
-		go loadBalancer.cache.save(request, body, res)
+	if loadBalancer.cache != nil && err == nil {
+		// Handle caching on a different thread so that we can return the response
+		go loadBalancer.cache.save(request, body, res, loadBalancer.cacheTimeoutInSeconds)
 	}
 }
 

@@ -15,7 +15,7 @@ type Server struct {
 	client *http.Client
 }
 
-func InitServer(url *url.URL) *Server {
+func InitServer(url *url.URL, healthCheckFrequencyInSeconds int) *Server {
 	transportConfig := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -33,8 +33,7 @@ func InitServer(url *url.URL) *Server {
 	}
 
 	// Initialize health checks on load
-	go server.healthCheck(time.Second * 5)
-
+	go server.healthCheck(time.Second * time.Duration(healthCheckFrequencyInSeconds))
 	return &server
 }
 

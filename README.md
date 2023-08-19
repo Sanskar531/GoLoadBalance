@@ -12,9 +12,9 @@ The main goal of this load balancer is to first be initialized and be open to re
 - [x] Health checks to ping server whether it's still alive or not.
 - [x] Actual loading balancing using `round_robin` and `Circular/Ring buffers`. 
 - [x] Support passing `.yaml` config files
+- [x] Basic Caching by hashing parts of the request header
 
 ## Things left to implement:
-- [ ] Caching
 - [ ] TLS support
 - [ ] Permanent redirects/rewrites like nginx
 - [ ] Support multiple load balancing algorithm

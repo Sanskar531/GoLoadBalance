@@ -8,8 +8,11 @@ import (
 )
 
 type Config struct {
-	ServerUrls []*url.URL
-	Algorithm  string
+	ServerUrls                    []*url.URL
+	Algorithm                     string
+	CacheEnabled                  bool
+	CacheTimeoutInSeconds         int
+	HealthCheckFrequencyInSeconds int
 }
 
 func parseServers(servers *string) []*url.URL {
@@ -44,7 +47,10 @@ func parseBalancingAlgorithm(algorithm *string) string {
 func parseCommandLineArgs() *Config {
 	servers := flag.String("servers", "", "Server urls. Usage: --servers=http://localhost:3000")
 	algorithm := flag.String("algorithm", "", "Load Balancing Algorithms: round_robin. Usage: --algorithm=round_robin")
-	configFilePath := flag.String("config", "", "Config file for the load balancer. Usage --config=./example.yaml")
+	configFilePath := flag.String("config", "", "Config file for the load balancer. Usage: --config=./example.yaml")
+	cachingEnabled := flag.Bool("cache-enabled", false, "Enable Caching in the load balancer. Usage: --cache-enabled")
+	cacheTimout := flag.Int("cache-timeout-in-seconds", 0, "Keep cached value alive for x seconds in the load balancer. Usage: --cache-timeout=10")
+	healthCheckFrequency := flag.Int("health-check-frequency-in-seconds", 0, "The amount of time in between a ping to the server. Usage: --health-check-frequency-in-seconds=10")
 
 	flag.Parse()
 
@@ -53,7 +59,10 @@ func parseCommandLineArgs() *Config {
 	}
 
 	return &Config{
-		ServerUrls: parseServers(servers),
-		Algorithm:  parseBalancingAlgorithm(algorithm),
+		ServerUrls:                    parseServers(servers),
+		Algorithm:                     parseBalancingAlgorithm(algorithm),
+		CacheEnabled:                  *cachingEnabled,
+		CacheTimeoutInSeconds:         *cacheTimout,
+		HealthCheckFrequencyInSeconds: *healthCheckFrequency,
 	}
 }

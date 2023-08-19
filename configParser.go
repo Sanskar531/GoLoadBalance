@@ -13,8 +13,11 @@ type YAMLUrl struct {
 
 // Intermediate type needed to unmarshal urls properly
 type YamlConfig struct {
-	ServerUrls []*YAMLUrl `yaml:"servers"`
-	Algorithm  string     `yaml:"algorithm"`
+	ServerUrls                    []*YAMLUrl `yaml:"servers"`
+	Algorithm                     string     `yaml:"algorithm"`
+	CacheEnabled                  bool       `default:"false" yaml:"cache_enabled"`
+	CacheTimeoutInSeconds         int        `default:"10" yaml:"cache_timeout_in_seconds"`
+	HealthCheckFrequencyInSeconds int        `default:"10" yaml:"health_check_frequency_in_seconds"`
 }
 
 // Implement UnmarshalYAML interface so that we can directly parse it as a url
@@ -48,8 +51,11 @@ func (yamlConfig *YamlConfig) convertToConfig() *Config {
 	}
 
 	return &Config{
-		ServerUrls: urls,
-		Algorithm:  yamlConfig.Algorithm,
+		ServerUrls:                    urls,
+		Algorithm:                     yamlConfig.Algorithm,
+		CacheEnabled:                  yamlConfig.CacheEnabled,
+		CacheTimeoutInSeconds:         yamlConfig.CacheTimeoutInSeconds,
+		HealthCheckFrequencyInSeconds: yamlConfig.HealthCheckFrequencyInSeconds,
 	}
 }
 
