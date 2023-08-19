@@ -26,7 +26,11 @@ func InitCache() *Cache {
 // Bootleg hash function to generate a hash based on
 // Method + Auth + IP + Real IP + Path
 func (cache *Cache) hash(request *http.Request) string {
-	// Hasher needs to be reset as we write to
+	// TODO: Race condition here
+	// Two threads trying to update the reset the hasher twice
+	// When one goes down to use the hasher the other thinks
+	// It's already reset the hasher and then moves on to create
+	// an undeterminisitic hash.
 	cache.hasher.Reset()
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
@@ -43,16 +47,19 @@ func (cache *Cache) hash(request *http.Request) string {
 	return hex.EncodeToString(cache.hasher.Sum(nil))
 }
 
-func (cache *Cache) check(request *http.Request) *http.Response {
+func (cache *Cache) check(request *http.Request) *map[string]any {
 	if val, ok := cache.values.Load(cache.hash(request)); ok {
-		return val.(*http.Response)
+		return val.(*map[string]any)
 	}
 
 	return nil
 }
 
-func (cache *Cache) save(request *http.Request, response *http.Response) {
-	cache.values.Store(cache.hash(request), response)
+func (cache *Cache) save(request *http.Request, body *string, response *http.Response) {
+	responseAndBody := make(map[string]any)
+	responseAndBody["body"] = body
+	responseAndBody["response"] = response
+	cache.values.Store(cache.hash(request), &responseAndBody)
 }
 
 func (cache *Cache) removeInvalidEntires() {

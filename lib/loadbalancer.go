@@ -28,24 +28,28 @@ func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
 // This function is called as a go routine by the http module
 // when serving a request
 func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request) {
-	cachedResponse := loadBalancer.cache.check(request)
+	cachedMap := loadBalancer.cache.check(request)
+	if cachedMap != nil {
+		cachedResponse := (*cachedMap)["response"].(*http.Response)
+		cachedBody := (*cachedMap)["body"].(*string)
 
-	if cachedResponse != nil {
-		log.Printf("Cache Hit: Found for route %s", request.URL.Path)
+		if cachedResponse != nil {
+			log.Printf("Cache Hit: Found for route %s", request.URL.Path)
 
-		// Reset the Headers properly before relaying the response back
-		responseWriter.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
-		responseWriter.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
-		io.Copy(responseWriter, cachedResponse.Body)
-		cachedResponse.Body.Close()
-		return
+			// Reset the Headers properly before relaying the response back
+			responseWriter.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
+			responseWriter.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
+			io.WriteString(responseWriter, *cachedBody)
+			cachedResponse.Body.Close()
+			return
+		}
 	}
 
 	server := loadBalancer.getServerToHandleRequest()
 
 	// Handle caching on a different thread so that we can return the response
-	if res, err := server.HandleRequest(responseWriter, request); err == nil {
-		go loadBalancer.cache.save(request, res)
+	if res, body, err := server.HandleRequest(responseWriter, request); err == nil {
+		go loadBalancer.cache.save(request, body, res)
 	}
 }
 

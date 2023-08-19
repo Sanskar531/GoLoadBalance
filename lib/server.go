@@ -26,8 +26,9 @@ func InitServer(url *url.URL) *Server {
 	}
 
 	server := Server{
-		Url:    url,
-		Alive:  true,
+		Url: url,
+		// We initialize as false as in the start we don't know if the host is alive
+		Alive:  false,
 		client: &client,
 	}
 
@@ -37,7 +38,7 @@ func InitServer(url *url.URL) *Server {
 	return &server
 }
 
-func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) (*http.Response, error) {
+func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) (*http.Response, *string, error) {
 	log.Printf("Forwarding Request to path %s using host %s", r.URL.Path, server.Url.Host)
 	// We don't need to keep the old host intact as that host is us
 	// We remove the old host and reuse the same request by changing the host to the server.
@@ -51,15 +52,22 @@ func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) (*ht
 	if err != nil {
 		log.Println("Error: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Reset the Headers properly before relaying the response back
 	w.Header().Set("Content-Length", res.Header.Get("Content-Length"))
 	w.Header().Set("Content-Type", res.Header.Get("Content-Type"))
-	io.Copy(w, res.Body)
+	teeReader := io.TeeReader(res.Body, w)
+	body, err := io.ReadAll(teeReader)
+
+	if err != nil {
+		log.Println("Error while trying to copy body for caching")
+	}
+
 	res.Body.Close()
-	return res, nil
+	stringifiedBody := string(body)
+	return res, &stringifiedBody, nil
 }
 
 func (server *Server) ping() bool {
