@@ -2,4 +2,4 @@ services:
   flask-app:
     build: .
     ports:
-      - "8000-8005:5000"
+      - "8000-8004:5000"

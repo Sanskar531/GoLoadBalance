@@ -2,6 +2,7 @@ package structs
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 )
@@ -9,12 +10,14 @@ import (
 type LoadBalancer struct {
 	Servers  []*Server
 	balancer *Balancer
+	cache    *Cache
 }
 
 func InitLoadBalancer(servers []*Server, balancer *Balancer) *LoadBalancer {
 	return &LoadBalancer{
 		Servers:  servers,
 		balancer: balancer,
+		cache:    InitCache(),
 	}
 }
 
@@ -40,10 +43,24 @@ func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
 // This function is called as a go routine by the http module
 // when serving a request
 func (loadBalancer *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	cachedResponse := loadBalancer.cache.check(r);
+
+	if cachedResponse != nil {
+		log.Printf("Cache Hit: Found for route %s", r.URL.Path)
+
+		// Reset the Headers properly before relaying the response back
+		w.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
+		w.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
+		io.Copy(w, cachedResponse.Body)
+		cachedResponse.Body.Close()
+		return
+	}
+
 	server := loadBalancer.getServerToHandleRequest()
 
 	// Handle request on a different thread
-	server.HandleRequest(w, r)
+	res := server.HandleRequest(w, r)
+	go loadBalancer.cache.save(r, res)
 }
 
 func (loadBalancer *LoadBalancer) GetServersStatus() map[string]bool {

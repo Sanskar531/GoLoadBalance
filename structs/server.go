@@ -37,7 +37,7 @@ func InitServer(url *url.URL) *Server {
 	return &server
 }
 
-func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
+func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) *http.Response {
 	log.Printf("Forwarding Request to path %s using host %s", r.URL.Path, server.Url.Host)
 	// We don't need to keep the old host intact as that host is us
 	// We remove the old host and reuse the same request by changing the host.
@@ -58,6 +58,7 @@ func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", res.Header.Get("Content-Type"))
 	io.Copy(w, res.Body)
 	res.Body.Close()
+	return res
 }
 
 func (server *Server) ping() bool {
