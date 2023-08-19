@@ -1,4 +1,4 @@
-package structs
+package lib
 
 import (
 	"crypto/sha256"

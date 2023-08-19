@@ -1,4 +1,4 @@
-package structs
+package lib
 
 import (
 	"encoding/json"
@@ -21,46 +21,32 @@ func InitLoadBalancer(servers []*Server, balancer *Balancer) *LoadBalancer {
 	}
 }
 
-func (loadBalancer *LoadBalancer) GetAliveServers() []*Server {
-	var aliveServers []*Server
-
-	// No need for a lock here because a single thread
-	// will be updating whether the server is alive or not
-	// as the healthcheck is a go routine
-	for _, server := range loadBalancer.Servers {
-		if server.Alive {
-			aliveServers = append(aliveServers, server)
-		}
-	}
-
-	return aliveServers
-}
-
 func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
-	return (*loadBalancer.balancer).GetServer(loadBalancer.GetAliveServers())
+	return (*loadBalancer.balancer).GetServer(loadBalancer.Servers)
 }
 
 // This function is called as a go routine by the http module
 // when serving a request
-func (loadBalancer *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	cachedResponse := loadBalancer.cache.check(r);
+func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request) {
+	cachedResponse := loadBalancer.cache.check(request)
 
 	if cachedResponse != nil {
-		log.Printf("Cache Hit: Found for route %s", r.URL.Path)
+		log.Printf("Cache Hit: Found for route %s", request.URL.Path)
 
 		// Reset the Headers properly before relaying the response back
-		w.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
-		w.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
-		io.Copy(w, cachedResponse.Body)
+		responseWriter.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
+		responseWriter.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
+		io.Copy(responseWriter, cachedResponse.Body)
 		cachedResponse.Body.Close()
 		return
 	}
 
 	server := loadBalancer.getServerToHandleRequest()
 
-	// Handle request on a different thread
-	res := server.HandleRequest(w, r)
-	go loadBalancer.cache.save(r, res)
+	// Handle caching on a different thread so that we can return the response
+	if res, err := server.HandleRequest(responseWriter, request); err == nil {
+		go loadBalancer.cache.save(request, res)
+	}
 }
 
 func (loadBalancer *LoadBalancer) GetServersStatus() map[string]bool {

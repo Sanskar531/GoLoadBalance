@@ -1,4 +1,4 @@
-package structs
+package lib
 
 import (
 	"crypto/tls"
@@ -37,13 +37,13 @@ func InitServer(url *url.URL) *Server {
 	return &server
 }
 
-func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) *http.Response {
+func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) (*http.Response, error) {
 	log.Printf("Forwarding Request to path %s using host %s", r.URL.Path, server.Url.Host)
 	// We don't need to keep the old host intact as that host is us
-	// We remove the old host and reuse the same request by changing the host.
+	// We remove the old host and reuse the same request by changing the host to the server.
 	r.URL.Host = server.Url.Host
 	r.URL.Scheme = server.Url.Scheme
-	// RequestURI needs to be empty for this to be a client request
+	// RequestURI needs to be empty for this to be a client request.
 	r.RequestURI = ""
 
 	res, err := server.client.Do(r)
@@ -51,6 +51,7 @@ func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) *htt
 	if err != nil {
 		log.Println("Error: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return nil, err
 	}
 
 	// Reset the Headers properly before relaying the response back
@@ -58,7 +59,7 @@ func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) *htt
 	w.Header().Set("Content-Type", res.Header.Get("Content-Type"))
 	io.Copy(w, res.Body)
 	res.Body.Close()
-	return res
+	return res, nil
 }
 
 func (server *Server) ping() bool {
@@ -85,7 +86,9 @@ func (server *Server) ping() bool {
 // the server is not responding
 func (server *Server) healthCheck(duration time.Duration) {
 	for {
-		server.Alive = server.ping()
+		isAlive := server.ping()
+		// no lock required here because this is an atomic operation
+		server.Alive = isAlive
 		time.Sleep(duration)
 	}
 }

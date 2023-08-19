@@ -1,23 +1,23 @@
 package main
 
 import (
-	"github.com/sanskar531/goloadbalance/structs"
+	"github.com/sanskar531/goloadbalance/lib"
 )
 
 func main() {
 	config := parseCommandLineArgs()
 
-	var servers []*structs.Server
+	var servers []*lib.Server
 
 	for _, parsedUrl := range config.ServerUrls {
-		servers = append(servers, structs.InitServer(
+		servers = append(servers, lib.InitServer(
 			parsedUrl,
 		))
 	}
 
-	balancer := structs.InitRoundRobin(len(servers))
+	balancer := lib.InitRoundRobin(len(servers))
 
-	loadbalancer := structs.InitLoadBalancer(
+	loadbalancer := lib.InitLoadBalancer(
 		servers,
 		&balancer,
 	)
