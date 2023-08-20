@@ -7,7 +7,9 @@ import (
 
 type Balancer interface {
 	GetServer(servers []*Server) *Server
+	// TODO: Future balancing algorithms might require server passed here to make calculations
 	ServerDead()
+	// TODO: Future balancing algorithms might require server passed here to make calculations
 	ServerAdd()
 }
 

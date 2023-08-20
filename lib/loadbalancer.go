@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -18,7 +19,7 @@ type LoadBalancer struct {
 }
 
 type AddServerRequest struct {
-	host string `json:"host"`
+	Host string `json:"host"`
 }
 
 type RemoveServerRequest struct {
@@ -101,12 +102,50 @@ func (loadBalancer *LoadBalancer) listenForDeadServer(server *Server) {
 	}
 }
 
+func (loadBalancer *LoadBalancer) FindServer(url *url.URL) (*Server, error) {
+	loadBalancer.mutex.Lock()
+	defer loadBalancer.mutex.Unlock()
+
+	for _, server := range loadBalancer.Servers {
+		if server.Url.Host == url.Host {
+			return server, nil
+		}
+	}
+	return nil, &NoServerFoundErr{}
+}
+
+func (loadBalancer *LoadBalancer) AddServer(host string) error {
+	parsedHostUrl, err := url.Parse(host)
+
+	if err != nil {
+		log.Printf("Can't parse host url %s", host)
+	}
+
+	_, err = loadBalancer.FindServer(parsedHostUrl)
+
+	if err == nil {
+		return &ServerExists{}
+	}
+
+	server := InitServer(parsedHostUrl, 10, 10)
+
+	loadBalancer.mutex.Lock()
+	defer loadBalancer.mutex.Unlock()
+
+	loadBalancer.Servers = append(loadBalancer.Servers, server)
+
+	// Make sure we let our balancer know that we have a new server
+	(*loadBalancer.balancer).ServerAdd()
+
+	return nil
+}
+
 func (loadBalancer *LoadBalancer) gracefullyShutdownServer(deadServer *Server) {
 	loadBalancer.mutex.Lock()
 	defer loadBalancer.mutex.Unlock()
 
 	// First, we let our balancing algorithm know that a server has died and it should
-	// clean up as well.
+	// clean up.
 	(*loadBalancer.balancer).ServerDead()
 
 	// Second, We take it out of the server pool. For this we need to lock the resource.
@@ -156,27 +195,33 @@ func (loadBalancer *LoadBalancer) Balance() {
 		},
 	)
 
-	// // Utility Function to add a server at runtime
-	// http.HandleFunc(
-	// 	"/goloadbalance/add_server",
-	// 	func(w http.ResponseWriter, r *http.Request) {
-	// 		if r.Method != http.MethodPost {
-	// 			w.WriteHeader(http.StatusBadRequest)
-	// 		}
-	//
-	// 		requestBody, err := io.ReadAll(r.Body);
-	// 		var body AddServerRequest;
-	//
-	// 		err = json.Unmarshal(requestBody, &body)
-	//
-	// 		if err != nil {
-	// 			log.Println("Error while parsing request body: ", err)
-	// 		}
-	//
-	// 		server := InitServer()
-	// 		loadBalancer.addServer();
-	// 	},
-	// )
+	// Utility Function to add a server at runtime
+	http.HandleFunc(
+		"/goloadbalance/add_server",
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				w.WriteHeader(http.StatusBadRequest)
+			}
+
+			requestBody, err := io.ReadAll(r.Body)
+			var body AddServerRequest
+
+			err = json.Unmarshal(requestBody, &body)
+
+			if err != nil {
+				log.Println("Error while parsing request body: ", err)
+			}
+
+			err = loadBalancer.AddServer(body.Host)
+
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(err.Error()))
+			}
+
+			log.Printf("Added %s to server pool", body.Host)
+		},
+	)
 
 	// Utility Handler to check which hosts are alive
 	http.HandleFunc(
@@ -199,17 +244,35 @@ func (loadBalancer *LoadBalancer) Balance() {
 				log.Println("Error while parsing request body: ", err.Error())
 			}
 
-			for _, server := range loadBalancer.Servers {
-				if server.Url.Host == body.Host {
-					log.Printf("Removing host %s as request", body.Host)
-					loadBalancer.gracefullyShutdownServer(server)
-					return
-				}
+			parsedHostUrl, err := url.Parse(body.Host)
+
+			if err != nil {
+				log.Printf("Can't parse host url %s", body.Host)
 			}
 
-			w.WriteHeader(http.StatusBadRequest)
+			server, err := loadBalancer.FindServer(parsedHostUrl)
+
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(err.Error()))
+			}
+
+			log.Printf("Removing %s from the server pool", body.Host)
+			loadBalancer.gracefullyShutdownServer(server)
 		},
 	)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+type NoServerFoundErr struct{}
+
+func (err *NoServerFoundErr) Error() string {
+	return "No Server Found."
+}
+
+type ServerExists struct{}
+
+func (err *ServerExists) Error() string {
+	return "Server already exists."
 }
