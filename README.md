@@ -25,7 +25,7 @@ The main goal of this load balancer is to first be initialized and be open to re
 
 ---
 
-License
+## License
 
 Copyright 2023 Sanskar Gauchan
 
