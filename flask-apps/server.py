@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 import time
 
 app = Flask(__name__)
@@ -23,6 +23,12 @@ def process_wait():
 @app.route("/json_payload")
 def get_json_payload():
     time.sleep(2)
-    return {
-            "mew": "noice"
-    }
+    return jsonify({
+        "hello": "world"
+    })
+
+@app.route("/invalid")
+def invalid_route():
+    return jsonify({
+        "not":"valid"
+    }), 400

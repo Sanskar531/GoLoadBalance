@@ -37,27 +37,28 @@ func InitServer(url *url.URL, healthCheckFrequencyInSeconds int) *Server {
 	return &server
 }
 
-func (server *Server) HandleRequest(w http.ResponseWriter, r *http.Request) (*http.Response, *string, error) {
-	log.Printf("Forwarding Request to path %s using host %s", r.URL.Path, server.Url.Host)
+func (server *Server) HandleRequest(responseWriter http.ResponseWriter, request *http.Request) (*http.Response, *string, error) {
+	log.Printf("Forwarding Request to path %s using host %s", request.URL.Path, server.Url.Host)
 	// We don't need to keep the old host intact as that host is us
 	// We remove the old host and reuse the same request by changing the host to the server.
-	r.URL.Host = server.Url.Host
-	r.URL.Scheme = server.Url.Scheme
+	request.URL.Host = server.Url.Host
+	request.URL.Scheme = server.Url.Scheme
 	// RequestURI needs to be empty for this to be a client request.
-	r.RequestURI = ""
+	request.RequestURI = ""
 
-	res, err := server.client.Do(r)
+	res, err := server.client.Do(request)
 
 	if err != nil {
 		log.Println("Error: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return nil, nil, err
 	}
 
 	// Reset the Headers properly before relaying the response back
-	w.Header().Set("Content-Length", res.Header.Get("Content-Length"))
-	w.Header().Set("Content-Type", res.Header.Get("Content-Type"))
-	teeReader := io.TeeReader(res.Body, w)
+	responseWriter.Header().Set("Content-Length", res.Header.Get("Content-Length"))
+	responseWriter.Header().Set("Content-Type", res.Header.Get("Content-Type"))
+	responseWriter.Header().Set("Status", res.Status)
+	teeReader := io.TeeReader(res.Body, responseWriter)
 	body, err := io.ReadAll(teeReader)
 
 	if err != nil {

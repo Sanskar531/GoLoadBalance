@@ -44,6 +44,7 @@ func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, 
 				// Reset the Headers properly before relaying the response back
 				responseWriter.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
 				responseWriter.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
+				responseWriter.Header().Set("Status", cachedResponse.Status);
 				io.WriteString(responseWriter, *cachedBody)
 				cachedResponse.Body.Close()
 				return
