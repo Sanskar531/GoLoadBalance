@@ -18,3 +18,4 @@ The main goal of this load balancer is to first be initialized and be open to re
 - [ ] TLS support
 - [ ] Permanent redirects/rewrites like nginx
 - [ ] Support multiple load balancing algorithm
+- [ ] Feature for server notifying the balancer that it is in maintainance

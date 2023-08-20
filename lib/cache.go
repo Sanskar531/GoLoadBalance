@@ -3,7 +3,6 @@ package lib
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"hash"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,28 +11,21 @@ import (
 )
 
 type Cache struct {
-	hasher hash.Hash
 	values *sync.Map
 }
 
 func InitCache() *Cache {
 	cache := Cache{
-		hasher: sha256.New(),
 		values: &sync.Map{},
 	}
 
 	return &cache
 }
 
-// Bootleg hash function to generate a hash based on
+// Basic Hash function to generate a hash based on
 // Method + Auth + IP + Real IP + Path
 func (cache *Cache) hash(request *http.Request) string {
-	// TODO: Race condition here
-	// Two threads trying to update the reset the hasher twice
-	// When one goes down to use the hasher the other thinks
-	// It's already reset the hasher and then moves on to create
-	// an undeterminisitic hash.
-	cache.hasher.Reset()
+	hasher := sha256.New();
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		log.Print("Error while reading request body")
@@ -45,8 +37,8 @@ func (cache *Cache) hash(request *http.Request) string {
 	realIp := request.Header.Get("X-Real-Ip")
 	xForwardedFor := request.Header.Get("X-Forwarded-For")
 
-	cache.hasher.Write([]byte(method + path + realIp + xForwardedFor + auth + string(body)))
-	return hex.EncodeToString(cache.hasher.Sum(nil))
+	hasher.Write([]byte(method + path + realIp + xForwardedFor + auth + string(body)))
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 func (cache *Cache) check(request *http.Request) *map[string]any {

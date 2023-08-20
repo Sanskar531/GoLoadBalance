@@ -34,8 +34,7 @@ func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
 // when serving a request
 func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request) {
 	if loadBalancer.cache != nil {
-		cachedMap := loadBalancer.cache.check(request)
-		if cachedMap != nil {
+		if cachedMap := loadBalancer.cache.check(request); cachedMap != nil {
 			cachedResponse := (*cachedMap)["response"].(*http.Response)
 			cachedBody := (*cachedMap)["body"].(*string)
 
