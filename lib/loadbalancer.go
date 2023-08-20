@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,7 +16,7 @@ type LoadBalancer struct {
 	balancer              *Balancer
 	cache                 *Cache
 	cacheTimeoutInSeconds int
-	mutex                 *sync.Mutex
+	mutex                 *sync.RWMutex
 }
 
 type AddServerRequest struct {
@@ -30,7 +31,7 @@ func InitLoadBalancer(servers []*Server, balancer *Balancer, isCachingEnabled bo
 	loadbalancer := &LoadBalancer{
 		Servers:  servers,
 		balancer: balancer,
-		mutex:    &sync.Mutex{},
+		mutex:    &sync.RWMutex{},
 	}
 
 	if isCachingEnabled {
@@ -47,6 +48,9 @@ func InitLoadBalancer(servers []*Server, balancer *Balancer, isCachingEnabled bo
 }
 
 func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
+	loadBalancer.mutex.RLock()
+	defer loadBalancer.mutex.RUnlock()
+	
 	return (*loadBalancer.balancer).GetServer(loadBalancer.Servers)
 }
 
@@ -103,8 +107,8 @@ func (loadBalancer *LoadBalancer) listenForDeadServer(server *Server) {
 }
 
 func (loadBalancer *LoadBalancer) FindServer(url *url.URL) (*Server, error) {
-	loadBalancer.mutex.Lock()
-	defer loadBalancer.mutex.Unlock()
+	loadBalancer.mutex.RLock()
+	defer loadBalancer.mutex.RUnlock()
 
 	for _, server := range loadBalancer.Servers {
 		if server.Url.Host == url.Host {
@@ -168,7 +172,7 @@ func (loadBalancer *LoadBalancer) gracefullyShutdownServer(deadServer *Server) {
 	// Once taken out of the server pool. We make sure that all it's active connections
 	// finish before we clear out the resource and since this is already running on another
 	// thread we can just poll and wait for the active connections to go down to 0.
-	for deadServer.ActiveConnections != 0 {
+	for atomic.LoadInt32(&deadServer.ActiveConnections) != 0 {
 		time.Sleep(time.Second)
 	}
 
@@ -253,8 +257,10 @@ func (loadBalancer *LoadBalancer) Balance() {
 			server, err := loadBalancer.FindServer(parsedHostUrl)
 
 			if err != nil {
+				log.Printf(err.Error())
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(err.Error()))
+				return
 			}
 
 			log.Printf("Removing %s from the server pool", body.Host)
