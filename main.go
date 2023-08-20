@@ -15,6 +15,7 @@ func main() {
 		servers = append(servers, lib.InitServer(
 			parsedUrl,
 			config.HealthCheckFrequencyInSeconds,
+			config.HealthCheckMaxRetries,
 		))
 	}
 

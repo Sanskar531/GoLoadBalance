@@ -25,7 +25,7 @@ func InitCache() *Cache {
 // Basic Hash function to generate a hash based on
 // Method + Auth + IP + Real IP + Path
 func (cache *Cache) hash(request *http.Request) string {
-	hasher := sha256.New();
+	hasher := sha256.New()
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		log.Print("Error while reading request body")

@@ -7,4 +7,5 @@ servers:
   - "http://localhost:8004"
 cache_enabled: true
 cache_timeout_in_seconds: 10
-health_check_frequency_in_seconds: 10
+health_check_frequency_in_seconds: 3
+health_check_max_retries: 2

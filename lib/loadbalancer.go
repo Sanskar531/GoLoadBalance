@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 )
 
 type LoadBalancer struct {
@@ -12,17 +14,26 @@ type LoadBalancer struct {
 	balancer              *Balancer
 	cache                 *Cache
 	cacheTimeoutInSeconds int
+	mutex                 *sync.Mutex
 }
 
 func InitLoadBalancer(servers []*Server, balancer *Balancer, isCachingEnabled bool, cachingTimoutInSeconds int) *LoadBalancer {
 	loadbalancer := &LoadBalancer{
 		Servers:  servers,
 		balancer: balancer,
+		mutex:    &sync.Mutex{},
 	}
+
 	if isCachingEnabled {
 		loadbalancer.cache = InitCache()
 		loadbalancer.cacheTimeoutInSeconds = cachingTimoutInSeconds
 	}
+
+	for _, server := range servers {
+		// Listen for dead servers on a different thread
+		go loadbalancer.listenForDeadServer(server)
+	}
+
 	return loadbalancer
 }
 
@@ -44,7 +55,7 @@ func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, 
 				// Reset the Headers properly before relaying the response back
 				responseWriter.Header().Set("Content-Length", cachedResponse.Header.Get("Content-Length"))
 				responseWriter.Header().Set("Content-Type", cachedResponse.Header.Get("Content-Type"))
-				responseWriter.Header().Set("Status", cachedResponse.Status);
+				responseWriter.Header().Set("Status", cachedResponse.Status)
 				io.WriteString(responseWriter, *cachedBody)
 				cachedResponse.Body.Close()
 				return
@@ -67,6 +78,52 @@ func (loadBalancer *LoadBalancer) GetServersStatus() map[string]bool {
 		serverStatuses[server.Url.Host] = server.Alive
 	}
 	return serverStatuses
+}
+
+func (loadBalancer *LoadBalancer) listenForDeadServer(server *Server) {
+	for {
+		select {
+		case <-*server.isDeadChannel:
+			loadBalancer.gracefullyShutdownServer(server)
+			// Once the server is shutdown we release the thread
+			return
+		}
+	}
+}
+
+func (loadBalancer *LoadBalancer) gracefullyShutdownServer(deadServer *Server) {
+	loadBalancer.mutex.Lock()
+	defer loadBalancer.mutex.Unlock()
+
+	// First, we let our balancing algorithm know that a server has died and it should
+	// clean up as well.
+	(*loadBalancer.balancer).ServerDead()
+
+	// Second, We take it out of the server pool. For this we need to lock the resource.
+	// This shoulnd't affect performance as I would assume this shouldn't happen often
+	for idx, server := range loadBalancer.Servers {
+		// Check if mem addresses match
+		if server == deadServer {
+			// If the only active server dies, we quit as well.
+			if len(loadBalancer.Servers) == 1 {
+				log.Fatal("Died because no other servers alive.")
+			}
+
+			// Replace the current index with the mem address for the last server
+			loadBalancer.Servers[idx] = loadBalancer.Servers[len(loadBalancer.Servers)-1]
+			// Remove the copied last server mem address from the server
+			loadBalancer.Servers = loadBalancer.Servers[:len(loadBalancer.Servers)-1]
+		}
+	}
+
+	// Once taken out of the server pool. We make sure that all it's active connections
+	// finish before we clear out the resource and since this is already running on another
+	// thread we can just poll and wait for the active connections to go down to 0.
+	for deadServer.ActiveConnections != 0 {
+		time.Sleep(time.Second)
+	}
+
+	// Now the server should go out of scope and cleaned up by the GC.
 }
 
 func (loadBalancer *LoadBalancer) Balance() {

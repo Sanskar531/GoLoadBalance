@@ -18,6 +18,7 @@ type YamlConfig struct {
 	CacheEnabled                  bool       `default:"false" yaml:"cache_enabled"`
 	CacheTimeoutInSeconds         int        `default:"10" yaml:"cache_timeout_in_seconds"`
 	HealthCheckFrequencyInSeconds int        `default:"10" yaml:"health_check_frequency_in_seconds"`
+	HealthCheckMaxRetries         int        `default:"10" yaml:"health_check_max_retries"`
 }
 
 // Implement UnmarshalYAML interface so that we can directly parse it as a url
@@ -56,6 +57,7 @@ func (yamlConfig *YamlConfig) convertToConfig() *Config {
 		CacheEnabled:                  yamlConfig.CacheEnabled,
 		CacheTimeoutInSeconds:         yamlConfig.CacheTimeoutInSeconds,
 		HealthCheckFrequencyInSeconds: yamlConfig.HealthCheckFrequencyInSeconds,
+		HealthCheckMaxRetries:         yamlConfig.HealthCheckMaxRetries,
 	}
 }
 

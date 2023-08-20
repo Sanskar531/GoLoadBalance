@@ -13,6 +13,7 @@ type Config struct {
 	CacheEnabled                  bool
 	CacheTimeoutInSeconds         int
 	HealthCheckFrequencyInSeconds int
+	HealthCheckMaxRetries         int
 }
 
 func parseServers(servers *string) []*url.URL {
@@ -51,6 +52,7 @@ func parseCommandLineArgs() *Config {
 	cachingEnabled := flag.Bool("cache-enabled", false, "Enable Caching in the load balancer. Usage: --cache-enabled")
 	cacheTimout := flag.Int("cache-timeout-in-seconds", 0, "Keep cached value alive for x seconds in the load balancer. Usage: --cache-timeout=10")
 	healthCheckFrequency := flag.Int("health-check-frequency-in-seconds", 0, "The amount of time in between a ping to the server. Usage: --health-check-frequency-in-seconds=10")
+	healthCheckMaxRetry := flag.Int("health-check-max-retries", 0, "The amount of times pings will occur after initially when a server doesn't respond. Usage: --health-check-max-retries=10")
 
 	flag.Parse()
 
@@ -64,5 +66,6 @@ func parseCommandLineArgs() *Config {
 		CacheEnabled:                  *cachingEnabled,
 		CacheTimeoutInSeconds:         *cacheTimout,
 		HealthCheckFrequencyInSeconds: *healthCheckFrequency,
+		HealthCheckMaxRetries:         *healthCheckMaxRetry,
 	}
 }

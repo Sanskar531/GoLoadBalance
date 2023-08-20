@@ -6,16 +6,20 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync/atomic"
 	"time"
 )
 
 type Server struct {
-	Url    *url.URL
-	Alive  bool
-	client *http.Client
+	Url               *url.URL
+	Alive             bool
+	client            *http.Client
+	retryCount        int
+	isDeadChannel     *(chan bool)
+	ActiveConnections int32
 }
 
-func InitServer(url *url.URL, healthCheckFrequencyInSeconds int) *Server {
+func InitServer(url *url.URL, healthCheckFrequencyInSeconds int, maxRetryCount int) *Server {
 	transportConfig := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -25,15 +29,17 @@ func InitServer(url *url.URL, healthCheckFrequencyInSeconds int) *Server {
 		Transport: transportConfig,
 	}
 
+	isDeadChannel := make(chan bool)
 	server := Server{
 		Url: url,
 		// We initialize as false as in the start we don't know if the host is alive
-		Alive:  false,
-		client: &client,
+		Alive:         false,
+		client:        &client,
+		isDeadChannel: &isDeadChannel,
 	}
 
 	// Initialize health checks on load
-	go server.healthCheck(time.Second * time.Duration(healthCheckFrequencyInSeconds))
+	go server.healthCheck(time.Second*time.Duration(healthCheckFrequencyInSeconds), maxRetryCount)
 	return &server
 }
 
@@ -46,7 +52,13 @@ func (server *Server) HandleRequest(responseWriter http.ResponseWriter, request 
 	// RequestURI needs to be empty for this to be a client request.
 	request.RequestURI = ""
 
+	// Multiple threads will access this
+	atomic.AddInt32(&server.ActiveConnections, 1)
+
 	res, err := server.client.Do(request)
+
+	// Multiple threads will access this
+	atomic.AddInt32(&server.ActiveConnections, -1)
 
 	if err != nil {
 		log.Println("Error: ", err)
@@ -58,6 +70,8 @@ func (server *Server) HandleRequest(responseWriter http.ResponseWriter, request 
 	responseWriter.Header().Set("Content-Length", res.Header.Get("Content-Length"))
 	responseWriter.Header().Set("Content-Type", res.Header.Get("Content-Type"))
 	responseWriter.Header().Set("Status", res.Status)
+	// Body is a stream we read from the stream into two and write it to the reader we get back
+	// from tee and then write it to the responseWriter as well.
 	teeReader := io.TeeReader(res.Body, responseWriter)
 	body, err := io.ReadAll(teeReader)
 
@@ -92,11 +106,27 @@ func (server *Server) ping() bool {
 // is still responding
 // TODO: get a function as an argument to handle the case where
 // the server is not responding
-func (server *Server) healthCheck(duration time.Duration) {
+func (server *Server) healthCheck(duration time.Duration, maxRetryCount int) {
 	for {
+		if server.retryCount == maxRetryCount {
+			log.Printf("Removing server at host: %s after %d retries", server.Url.Host, maxRetryCount)
+
+			// launch webhook
+			if false {
+				log.Printf("Sending webhook event to %s because %s died.", "sdf", "dsf")
+			}
+			close(*server.isDeadChannel)
+
+			return
+		}
 		isAlive := server.ping()
 		// no lock required here because this is an atomic operation
 		server.Alive = isAlive
+		if !isAlive {
+			server.retryCount += 1
+		} else {
+			server.retryCount = 0
+		}
 		time.Sleep(duration)
 	}
 }
