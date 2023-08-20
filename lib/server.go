@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -17,6 +18,7 @@ type Server struct {
 	retryCount        int
 	isDeadChannel     *(chan bool)
 	ActiveConnections int32
+	mutex             *sync.RWMutex
 }
 
 func InitServer(url *url.URL, healthCheckFrequencyInSeconds int, maxRetryCount int) *Server {
@@ -36,6 +38,7 @@ func InitServer(url *url.URL, healthCheckFrequencyInSeconds int, maxRetryCount i
 		Alive:         false,
 		client:        &client,
 		isDeadChannel: &isDeadChannel,
+		mutex:         &sync.RWMutex{},
 	}
 
 	// Initialize health checks on load
@@ -115,13 +118,16 @@ func (server *Server) healthCheck(duration time.Duration, maxRetryCount int) {
 			if false {
 				log.Printf("Sending webhook event to %s because %s died.", "sdf", "dsf")
 			}
+
 			close(*server.isDeadChannel)
 
 			return
 		}
 		isAlive := server.ping()
 		// no lock required here because this is an atomic operation
+		server.mutex.Lock()
 		server.Alive = isAlive
+		server.mutex.Unlock()
 		if !isAlive {
 			server.retryCount += 1
 		} else {

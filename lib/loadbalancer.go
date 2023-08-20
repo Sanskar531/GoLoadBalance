@@ -17,6 +17,14 @@ type LoadBalancer struct {
 	mutex                 *sync.Mutex
 }
 
+type AddServerRequest struct {
+	host string `json:"host"`
+}
+
+type RemoveServerRequest struct {
+	Host string `json:"host"`
+}
+
 func InitLoadBalancer(servers []*Server, balancer *Balancer, isCachingEnabled bool, cachingTimoutInSeconds int) *LoadBalancer {
 	loadbalancer := &LoadBalancer{
 		Servers:  servers,
@@ -75,7 +83,9 @@ func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, 
 func (loadBalancer *LoadBalancer) GetServersStatus() map[string]bool {
 	serverStatuses := make(map[string]bool)
 	for _, server := range loadBalancer.Servers {
+		server.mutex.RLock()
 		serverStatuses[server.Url.Host] = server.Alive
+		server.mutex.RUnlock()
 	}
 	return serverStatuses
 }
@@ -143,6 +153,61 @@ func (loadBalancer *LoadBalancer) Balance() {
 				log.Println(err)
 			}
 			w.Write(encodedJson)
+		},
+	)
+
+	// // Utility Function to add a server at runtime
+	// http.HandleFunc(
+	// 	"/goloadbalance/add_server",
+	// 	func(w http.ResponseWriter, r *http.Request) {
+	// 		if r.Method != http.MethodPost {
+	// 			w.WriteHeader(http.StatusBadRequest)
+	// 		}
+	//
+	// 		requestBody, err := io.ReadAll(r.Body);
+	// 		var body AddServerRequest;
+	//
+	// 		err = json.Unmarshal(requestBody, &body)
+	//
+	// 		if err != nil {
+	// 			log.Println("Error while parsing request body: ", err)
+	// 		}
+	//
+	// 		server := InitServer()
+	// 		loadBalancer.addServer();
+	// 	},
+	// )
+
+	// Utility Handler to check which hosts are alive
+	http.HandleFunc(
+		"/goloadbalance/remove_server",
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				w.WriteHeader(http.StatusBadRequest)
+			}
+
+			body := RemoveServerRequest{}
+			requestBody, err := io.ReadAll(r.Body)
+
+			if err != nil {
+				log.Println("Error while parsing request body: ", err.Error())
+			}
+
+			err = json.Unmarshal(requestBody, &body)
+
+			if err != nil {
+				log.Println("Error while parsing request body: ", err.Error())
+			}
+
+			for _, server := range loadBalancer.Servers {
+				if server.Url.Host == body.Host {
+					log.Printf("Removing host %s as request", body.Host)
+					loadBalancer.gracefullyShutdownServer(server)
+					return
+				}
+			}
+
+			w.WriteHeader(http.StatusBadRequest)
 		},
 	)
 

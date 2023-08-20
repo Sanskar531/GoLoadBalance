@@ -8,6 +8,7 @@ import (
 type Balancer interface {
 	GetServer(servers []*Server) *Server
 	ServerDead()
+	ServerAdd()
 }
 
 type RoundRobin struct {
@@ -46,6 +47,14 @@ func (balancer *RoundRobin) ServerDead() {
 
 	// Once server died so ring buffer needs to go down by one.
 	balancer.ringBuffer = initRingBuffer(balancer.ringBuffer.Len() - 1)
+}
+
+func (balancer *RoundRobin) ServerAdd() {
+	balancer.mutex.Lock()
+	defer balancer.mutex.Unlock()
+
+	// Once server died so ring buffer needs to go down by one.
+	balancer.ringBuffer = initRingBuffer(balancer.ringBuffer.Len() + 1)
 }
 
 func (balancer *RoundRobin) GetServer(servers []*Server) *Server {

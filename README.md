@@ -21,3 +21,5 @@ The main goal of this load balancer is to first be initialized and be open to re
 - [ ] Support multiple load balancing algorithm
 - [ ] Feature for server notifying the balancer that it is in maintainance
 - [ ] Support Webhooks for when a server dies
+- [ ] Add/Remove server at runtime
+- [ ] Support least connections loadbalancing algorithm.
