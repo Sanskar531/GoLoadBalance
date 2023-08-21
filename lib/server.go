@@ -21,7 +21,7 @@ type Server struct {
 	isDeadChannel     *(chan bool)
 	ActiveConnections int32
 	mutex             *sync.RWMutex
-	config          	*configuration.Config
+	config            *configuration.Config
 }
 
 func InitServer(url *url.URL, config *configuration.Config) *Server {

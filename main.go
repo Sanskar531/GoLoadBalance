@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/sanskar531/goloadbalance/lib"
 	"github.com/sanskar531/goloadbalance/configuration"
+	"github.com/sanskar531/goloadbalance/lib"
 )
 
 func main() {
@@ -22,8 +22,7 @@ func main() {
 	loadbalancer := lib.InitLoadBalancer(
 		servers,
 		&balancer,
-		mainConfig.CacheEnabled,
-		mainConfig.CacheTimeoutInSeconds,
+		mainConfig,
 	)
 
 	loadbalancer.Balance()
