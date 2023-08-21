@@ -2,20 +2,18 @@ package main
 
 import (
 	"github.com/sanskar531/goloadbalance/lib"
+	"github.com/sanskar531/goloadbalance/configuration"
 )
 
-var config *Config
-
 func main() {
-	config = parseCommandLineArgs()
+	mainConfig := configuration.ParseCommandLineArgs()
 
 	var servers []*lib.Server
 
-	for _, parsedUrl := range config.ServerUrls {
+	for _, parsedUrl := range mainConfig.ServerUrls {
 		servers = append(servers, lib.InitServer(
 			parsedUrl,
-			config.HealthCheckFrequencyInSeconds,
-			config.HealthCheckMaxRetries,
+			mainConfig,
 		))
 	}
 
@@ -24,8 +22,8 @@ func main() {
 	loadbalancer := lib.InitLoadBalancer(
 		servers,
 		&balancer,
-		config.CacheEnabled,
-		config.CacheTimeoutInSeconds,
+		mainConfig.CacheEnabled,
+		mainConfig.CacheTimeoutInSeconds,
 	)
 
 	loadbalancer.Balance()

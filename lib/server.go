@@ -9,6 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sanskar531/goloadbalance/configuration"
 )
 
 type Server struct {
@@ -19,9 +21,10 @@ type Server struct {
 	isDeadChannel     *(chan bool)
 	ActiveConnections int32
 	mutex             *sync.RWMutex
+	config          	*configuration.Config
 }
 
-func InitServer(url *url.URL, healthCheckFrequencyInSeconds int, maxRetryCount int) *Server {
+func InitServer(url *url.URL, config *configuration.Config) *Server {
 	transportConfig := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
@@ -39,10 +42,11 @@ func InitServer(url *url.URL, healthCheckFrequencyInSeconds int, maxRetryCount i
 		client:        &client,
 		isDeadChannel: &isDeadChannel,
 		mutex:         &sync.RWMutex{},
+		config:        config,
 	}
 
 	// Initialize health checks on load
-	go server.healthCheck(time.Second*time.Duration(healthCheckFrequencyInSeconds), maxRetryCount)
+	go server.healthCheck(time.Second*time.Duration(config.HealthCheckFrequencyInSeconds), config.HealthCheckMaxRetries)
 	return &server
 }
 

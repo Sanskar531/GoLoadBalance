@@ -9,11 +9,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sanskar531/goloadbalance/configuration"
 )
 
 type LoadBalancer struct {
 	Servers               []*Server
 	balancer              *Balancer
+	config                *configuration.Config
 	cache                 *Cache
 	cacheTimeoutInSeconds int
 	mutex                 *sync.RWMutex
@@ -27,16 +30,17 @@ type RemoveServerRequest struct {
 	Host string `json:"host"`
 }
 
-func InitLoadBalancer(servers []*Server, balancer *Balancer, isCachingEnabled bool, cachingTimoutInSeconds int) *LoadBalancer {
+func InitLoadBalancer(servers []*Server, balancer *Balancer, config *configuration.Config) *LoadBalancer {
 	loadbalancer := &LoadBalancer{
 		Servers:  servers,
 		balancer: balancer,
 		mutex:    &sync.RWMutex{},
+		config:   config,
 	}
 
-	if isCachingEnabled {
+	if config.CacheEnabled {
 		loadbalancer.cache = InitCache()
-		loadbalancer.cacheTimeoutInSeconds = cachingTimoutInSeconds
+		loadbalancer.cacheTimeoutInSeconds = config.CacheTimeoutInSeconds
 	}
 
 	for _, server := range servers {
@@ -50,7 +54,7 @@ func InitLoadBalancer(servers []*Server, balancer *Balancer, isCachingEnabled bo
 func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
 	loadBalancer.mutex.RLock()
 	defer loadBalancer.mutex.RUnlock()
-	
+
 	return (*loadBalancer.balancer).GetServer(loadBalancer.Servers)
 }
 
@@ -131,7 +135,7 @@ func (loadBalancer *LoadBalancer) AddServer(host string) error {
 		return &ServerExists{}
 	}
 
-	server := InitServer(parsedHostUrl, 10, 10)
+	server := InitServer(parsedHostUrl, loadBalancer.config)
 
 	loadBalancer.mutex.Lock()
 	defer loadBalancer.mutex.Unlock()
