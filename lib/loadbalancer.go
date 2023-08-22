@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -61,6 +63,17 @@ func (loadBalancer *LoadBalancer) getServerToHandleRequest() *Server {
 // This function is called as a go routine by the http module
 // when serving a request
 func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request) {
+	// Don't process request from blocked ips
+	clientIp := net.ParseIP(strings.Split(request.RemoteAddr, ":")[0])
+	log.Printf(clientIp.String())
+	for _, ip := range loadBalancer.config.BlacklistedIps {
+		if ip.Equal(clientIp) {
+			responseWriter.WriteHeader(http.StatusUnauthorized)
+			responseWriter.Write([]byte("Unauthorized request."))
+			return
+		}
+	}
+
 	if loadBalancer.cache != nil {
 		if cachedMap := loadBalancer.cache.check(request); cachedMap != nil {
 			cachedResponse := (*cachedMap)["response"].(*http.Response)

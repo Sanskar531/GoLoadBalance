@@ -3,6 +3,7 @@ package configuration
 import (
 	"flag"
 	"log"
+	"net"
 	"net/url"
 	"strings"
 )
@@ -10,6 +11,7 @@ import (
 type Config struct {
 	ServerUrls                    []*url.URL
 	Algorithm                     string
+	BlacklistedIps                []net.IP
 	CacheEnabled                  bool
 	CacheTimeoutInSeconds         int
 	HealthCheckFrequencyInSeconds int

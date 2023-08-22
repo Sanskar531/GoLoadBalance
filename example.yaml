@@ -5,6 +5,8 @@ servers:
   - "http://localhost:8002"
   - "http://localhost:8003"
   - "http://localhost:8004"
+blacklisted_ips:
+  - 127.0.0.1
 cache_enabled: false
 cache_timeout_in_seconds: 10
 health_check_frequency_in_seconds: 3

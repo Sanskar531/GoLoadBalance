@@ -1,10 +1,12 @@
 package configuration
 
 import (
-	"gopkg.in/yaml.v3"
 	"log"
+	"net"
 	"net/url"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type YAMLUrl struct {
@@ -14,6 +16,7 @@ type YAMLUrl struct {
 // Intermediate type needed to unmarshal urls properly
 type YamlConfig struct {
 	ServerUrls                    []*YAMLUrl `yaml:"servers"`
+	BlacklistedIps                []net.IP   `yaml:"blacklisted_ips"`
 	Algorithm                     string     `yaml:"algorithm"`
 	CacheEnabled                  bool       `default:"false" yaml:"cache_enabled"`
 	CacheTimeoutInSeconds         int        `default:"10" yaml:"cache_timeout_in_seconds"`
@@ -58,6 +61,7 @@ func (yamlConfig *YamlConfig) convertToConfig() *Config {
 		CacheTimeoutInSeconds:         yamlConfig.CacheTimeoutInSeconds,
 		HealthCheckFrequencyInSeconds: yamlConfig.HealthCheckFrequencyInSeconds,
 		HealthCheckMaxRetries:         yamlConfig.HealthCheckMaxRetries,
+		BlacklistedIps:                yamlConfig.BlacklistedIps,
 	}
 }
 
