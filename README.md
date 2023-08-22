@@ -19,10 +19,9 @@ The main goal of this load balancer is to first be initialized and be open to re
 - [x] Support Webhooks for when a server dies
 
 ## Things left to implement:
-- [ ] TLS support
-- [ ] Permanent redirects/rewrites like nginx
-- [ ] Support multiple load balancing algorithm
-- [ ] Support least connections loadbalancing algorithm.
+- [ ] TLS support.
+- [ ] Permanent redirects/rewrites like nginx.
+- [ ] Support multiple load balancing algorithms.
 
 ---
 
