@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import time
 
 app = Flask(__name__)
@@ -32,3 +32,8 @@ def invalid_route():
     return jsonify({
         "not":"valid"
     }), 400
+
+@app.route("/app_died", methods=["POST"])
+def app_died():
+    print(request.json)
+    return "ACK", 200

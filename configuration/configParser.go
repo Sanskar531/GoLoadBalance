@@ -17,6 +17,7 @@ type YAMLUrl struct {
 type YamlConfig struct {
 	ServerUrls                    []*YAMLUrl `yaml:"servers"`
 	BlacklistedIps                []net.IP   `yaml:"blacklisted_ips"`
+	OnServerDeadWebhook           *YAMLUrl   `yaml:"on_dead_server_webhook"`
 	Algorithm                     string     `yaml:"algorithm"`
 	CacheEnabled                  bool       `default:"false" yaml:"cache_enabled"`
 	CacheTimeoutInSeconds         int        `default:"10" yaml:"cache_timeout_in_seconds"`
@@ -62,6 +63,7 @@ func (yamlConfig *YamlConfig) convertToConfig() *Config {
 		HealthCheckFrequencyInSeconds: yamlConfig.HealthCheckFrequencyInSeconds,
 		HealthCheckMaxRetries:         yamlConfig.HealthCheckMaxRetries,
 		BlacklistedIps:                yamlConfig.BlacklistedIps,
+		OnServerDeadWebhook:           yamlConfig.OnServerDeadWebhook.Url,
 	}
 }
 

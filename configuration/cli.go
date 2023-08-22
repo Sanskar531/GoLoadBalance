@@ -16,6 +16,7 @@ type Config struct {
 	CacheTimeoutInSeconds         int
 	HealthCheckFrequencyInSeconds int
 	HealthCheckMaxRetries         int
+	OnServerDeadWebhook           *url.URL
 }
 
 func parseServers(servers *string) []*url.URL {

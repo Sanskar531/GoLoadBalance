@@ -15,12 +15,13 @@ The main goal of this load balancer is to first be initialized and be open to re
 - [x] Basic Caching by hashing parts of the request header
 - [x] Max Retries before a server is removed from the server pool.
 - [x] Add/Remove server at runtime
+- [x] Blacklisting IPs
+- [x] Support Webhooks for when a server dies
 
 ## Things left to implement:
 - [ ] TLS support
 - [ ] Permanent redirects/rewrites like nginx
 - [ ] Support multiple load balancing algorithm
-- [ ] Support Webhooks for when a server dies
 - [ ] Support least connections loadbalancing algorithm.
 
 ---

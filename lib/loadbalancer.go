@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"log"
@@ -103,6 +104,12 @@ func (loadBalancer *LoadBalancer) ServeHTTP(responseWriter http.ResponseWriter, 
 }
 
 func (loadBalancer *LoadBalancer) GetServersStatus() map[string]bool {
+	// We need to apply a read lock for when we get the server's statuses
+	// They might be in progress getting removed or added so it's better
+	// to have a lock here
+	loadBalancer.mutex.RLock()
+	defer loadBalancer.mutex.RUnlock()
+
 	serverStatuses := make(map[string]bool)
 	for _, server := range loadBalancer.Servers {
 		server.mutex.RLock()
@@ -192,6 +199,24 @@ func (loadBalancer *LoadBalancer) gracefullyShutdownServer(deadServer *Server) {
 	for atomic.LoadInt32(&deadServer.ActiveConnections) != 0 {
 		time.Sleep(time.Second)
 	}
+
+	// Send the webhook event concurrently on another thread and let this thread go so, we can
+	// release the lock
+	go func() {
+		statuses, err := json.Marshal(loadBalancer.GetServersStatus())
+
+		if err != nil {
+			log.Printf("Error while getting server statuses while sending webhook event to notify a server died.")
+		}
+
+		_, err = http.Post(loadBalancer.config.OnServerDeadWebhook.String(), "application/json", bytes.NewReader(statuses))
+
+		if err != nil {
+			log.Printf("Error while sending a http request to server because a server died: ", err)
+		} else {
+			log.Printf("Sent webhook event to %s because a server died.", loadBalancer.config.OnServerDeadWebhook)
+		}
+	}()
 
 	// Now the server should go out of scope and cleaned up by the GC.
 }
