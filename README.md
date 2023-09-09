@@ -22,6 +22,8 @@ The main goal of this load balancer is to first be initialized and be open to re
 - [ ] TLS support.
 - [ ] Permanent redirects/rewrites like nginx.
 - [ ] Support multiple load balancing algorithms.
+- [ ] Use channels to optimize to avoid mutexes.
+- [ ] Use go routine pool so we don't need to spawn so many goroutines for many concurrent request.
 
 ---
 
